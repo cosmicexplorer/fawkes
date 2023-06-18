@@ -11,6 +11,9 @@ readonly output_file="${OUTPUT_FILE:-./fawkes-runner.pex}"
 
 PATH="/home/cosmicexplorer/tools/s2/opt/spack/linux-ubuntu22.10-zen3/gcc-12.2.0/python-3.8.16-aa6figfsbchmev4h5xiwa7tcqgzlbs5h/bin:${PATH}"
 
+# NB: tensorflow-gpu==2.5.3 errors out when using venv, but not pex for some reason? See this issue:
+# https://github.com/keras-team/keras/issues/14632#issuecomment-845960400
+# Using tensorflow-gpu==2.4.1 should work with pip/venv? 2.5.3 works fine with pex!
 exec "$pex_cmd" \
      -vvvvvvvvv \
      --resolver-version=pip-2020-resolver \
