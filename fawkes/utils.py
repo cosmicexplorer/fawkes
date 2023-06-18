@@ -14,7 +14,6 @@ import os
 import pickle
 import random
 import shutil
-import sys
 import tarfile
 import zipfile
 
@@ -24,11 +23,8 @@ import six
 from keras.utils import Progbar
 from six.moves.urllib.error import HTTPError, URLError
 
-stderr = sys.stderr
-sys.stderr = open(os.devnull, 'w')
 import keras
 
-sys.stderr = stderr
 import keras.backend as K
 import numpy as np
 import tensorflow as tf
