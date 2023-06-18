@@ -29,7 +29,6 @@ class FawkesMaskGeneration:
     KEEP_FINAL = False
     # max_val of image
     MAX_VAL = 255
-    MAXIMIZE = False
     IMAGE_SHAPE = (112, 112, 3)
     RATIO = 1.0
     LIMIT_DIST = False
@@ -39,7 +38,7 @@ class FawkesMaskGeneration:
                  batch_size=1, learning_rate=LEARNING_RATE,
                  max_iterations=MAX_ITERATIONS, initial_const=INITIAL_CONST,
                  intensity_range=INTENSITY_RANGE, l_threshold=L_THRESHOLD,
-                 max_val=MAX_VAL, keep_final=KEEP_FINAL, maximize=MAXIMIZE, image_shape=IMAGE_SHAPE, verbose=1,
+                 max_val=MAX_VAL, keep_final=KEEP_FINAL, image_shape=IMAGE_SHAPE, verbose=1,
                  ratio=RATIO, limit_dist=LIMIT_DIST, loss_method=LOSS_TYPE, tanh_process=True,
                  save_last_on_failed=True):
 
@@ -60,7 +59,6 @@ class FawkesMaskGeneration:
         self.max_val = max_val
         self.keep_final = keep_final
         self.verbose = verbose
-        self.maximize = maximize
         self.learning_rate = learning_rate
         self.ratio = ratio
         self.limit_dist = limit_dist
@@ -112,15 +110,13 @@ class FawkesMaskGeneration:
 
         return dist, dist_raw, dist_sum, dist_raw_avg
 
-    def calc_bottlesim(self, tape, source_raw, target_raw, original_raw):
+    def calc_bottlesim(self, tape, source_raw, original_raw):
         """ original Fawkes loss function. """
         bottlesim = 0.0
         bottlesim_sum = 0.0
         # make sure everything is the right size.
         model_input_shape = self.single_shape
         cur_aimg_input = self.resize_tensor(source_raw, model_input_shape)
-        if target_raw is not None:
-            cur_timg_input = self.resize_tensor(target_raw, model_input_shape)
         for bottleneck_model in self.bottleneck_models:
             if tape is not None:
                 try:
@@ -129,50 +125,42 @@ class FawkesMaskGeneration:
                     tape.watch(bottleneck_model.variables)
             # get the respective feature space reprs.
             bottleneck_a = bottleneck_model(cur_aimg_input)
-            if self.maximize:
-                bottleneck_s = bottleneck_model(original_raw)
-                bottleneck_diff = bottleneck_a - bottleneck_s
-                scale_factor = tf.sqrt(tf.reduce_sum(tf.square(bottleneck_s), axis=1))
-            else:
-                bottleneck_t = bottleneck_model(cur_timg_input)
-                bottleneck_diff = bottleneck_t - bottleneck_a
-                scale_factor = tf.sqrt(tf.reduce_sum(tf.square(bottleneck_t), axis=1))
+
+            bottleneck_s = bottleneck_model(original_raw)
+            bottleneck_diff = bottleneck_a - bottleneck_s
+            scale_factor = tf.sqrt(tf.reduce_sum(tf.square(bottleneck_s), axis=1))
+
             cur_bottlesim = tf.reduce_sum(tf.square(bottleneck_diff), axis=1)
             cur_bottlesim = cur_bottlesim / scale_factor
             bottlesim += cur_bottlesim
             bottlesim_sum += tf.reduce_sum(cur_bottlesim)
         return bottlesim, bottlesim_sum
 
-    def compute_feature_loss(self, tape, aimg_raw, simg_raw, aimg_input, timg_input, simg_input):
+    def compute_feature_loss(self, tape, aimg_raw, simg_raw, aimg_input, simg_input):
         """ Compute input space + feature space loss.
         """
         input_space_loss, dist_raw, input_space_loss_sum, input_space_loss_raw_avg = self.calc_dissim(aimg_raw,
                                                                                                       simg_raw)
-        feature_space_loss, feature_space_loss_sum = self.calc_bottlesim(tape, aimg_input, timg_input, simg_input)
+        feature_space_loss, feature_space_loss_sum = self.calc_bottlesim(tape, aimg_input, simg_input)
 
-        if self.maximize:
-            loss = self.const * tf.square(input_space_loss) - feature_space_loss * self.const_diff
-        else:
-            if self.it < self.MAX_ITERATIONS:
-                loss = self.const * tf.square(input_space_loss) + 1000 * feature_space_loss
+        loss = self.const * tf.square(input_space_loss) - feature_space_loss * self.const_diff
 
         loss_sum = tf.reduce_sum(loss)
         return loss_sum, feature_space_loss, input_space_loss_raw_avg, dist_raw
 
-    def compute(self, source_imgs, target_imgs=None):
+    def compute(self, source_imgs):
         """ Main function that runs cloak generation. """
         start_time = time.time()
         adv_imgs = []
         for idx in range(0, len(source_imgs), self.batch_size):
             print('processing image %d at %s' % (idx + 1, datetime.datetime.now()))
-            adv_img = self.compute_batch(source_imgs[idx:idx + self.batch_size],
-                                         target_imgs[idx:idx + self.batch_size] if target_imgs is not None else None)
+            adv_img = self.compute_batch(source_imgs[idx:idx + self.batch_size])
             adv_imgs.extend(adv_img)
         elapsed_time = time.time() - start_time
         print('protection cost %f s' % elapsed_time)
         return np.array(adv_imgs)
 
-    def compute_batch(self, source_imgs, target_imgs=None, retry=True):
+    def compute_batch(self, source_imgs, retry=True):
         """ TF2 method to generate the cloak. """
         # preprocess images.
         global progressbar
@@ -180,17 +168,13 @@ class FawkesMaskGeneration:
 
         # make sure source/target images are an array
         source_imgs = np.array(source_imgs, dtype=np.float32)
-        if target_imgs is not None:
-            target_imgs = np.array(target_imgs, dtype=np.float32)
 
         # metrics to test
-        best_bottlesim = [0] * nb_imgs if self.maximize else [np.inf] * nb_imgs
+        best_bottlesim = [0] * nb_imgs
         best_adv = np.zeros(source_imgs.shape)
 
         # convert to tanh-space
         simg_tanh = self.preprocess_arctanh(source_imgs)
-        if target_imgs is not None:
-            timg_tanh = self.preprocess_arctanh(target_imgs)
         self.modifier = tf.Variable(np.random.uniform(-1, 1, tuple([len(source_imgs)] + self.single_shape)) * 1e-4,
                                     dtype=tf.float32)
 
@@ -210,8 +194,6 @@ class FawkesMaskGeneration:
         # watch relevant variables.
         simg_tanh = tf.Variable(simg_tanh, dtype=np.float32)
         simg_raw = tf.Variable(source_imgs, dtype=np.float32)
-        if target_imgs is not None:
-            timg_raw = tf.Variable(timg_tanh, dtype=np.float32)
         # run the attack
         outside_list = np.ones(len(source_imgs))
         self.it = 0
@@ -234,15 +216,11 @@ class FawkesMaskGeneration:
 
                 # Convert further preprocess for bottleneck
                 aimg_input = self.input_space_process(aimg_raw)
-                if target_imgs is not None:
-                    timg_input = self.input_space_process(timg_raw)
-                else:
-                    timg_input = None
                 simg_input = self.input_space_process(simg_raw)
 
                 # get the feature space loss.
                 loss, internal_dist, input_dist_avg, dist_raw = self.compute_feature_loss(
-                    tape, aimg_raw, simg_raw, aimg_input, timg_input, simg_input)
+                    tape, aimg_raw, simg_raw, aimg_input, simg_input)
 
                 # compute gradients
                 grad = tape.gradient(loss, [self.modifier])
@@ -272,9 +250,7 @@ class FawkesMaskGeneration:
                     const_diff_numpy[e] = 1.0
                     outside_list[e] = 0
 
-                if input_dist <= self.l_threshold * 1.1 and (
-                        (feature_d < best_bottlesim[e] and (not self.maximize)) or (
-                        feature_d > best_bottlesim[e] and self.maximize)):
+                if input_dist <= self.l_threshold * 1.1 and feature_d > best_bottlesim[e]:
                     best_bottlesim[e] = feature_d
                     best_adv[e] = mod_img
 

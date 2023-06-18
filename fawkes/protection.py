@@ -26,8 +26,8 @@ from fawkes.utils import init_gpu, dump_image, reverse_process_cloaked, \
 from fawkes.align_face import aligner
 
 
-def generate_cloak_images(protector, image_X, target_emb=None):
-    cloaked_image_X = protector.compute(image_X, target_emb)
+def generate_cloak_images(protector, image_X):
+    cloaked_image_X = protector.compute(image_X)
     return cloaked_image_X
 
 
@@ -79,7 +79,7 @@ class Fawkes(object):
         return th, max_step, lr, extractors
 
     def run_protection(self, image_paths, th=0.04, sd=1e7, lr=10, max_step=500, batch_size=1, format='png',
-                       separate_target=True, debug=False, no_align=False, exp="", maximize=True,
+                       separate_target=True, debug=False, no_align=False, exp="",
                        save_last_on_failed=True):
 
         current_param = "-".join([str(x) for x in [self.th, sd, self.lr, self.max_step, batch_size, format,
@@ -114,7 +114,6 @@ class Fawkes(object):
                                                   max_iterations=self.max_step,
                                                   l_threshold=self.th,
                                                   verbose=debug,
-                                                  maximize=maximize,
                                                   keep_final=False,
                                                   image_shape=(IMG_SIZE, IMG_SIZE, 3),
                                                   loss_method='features',
