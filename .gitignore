@@ -21,3 +21,6 @@ fawkes_dev/protect_personId.txt
 
 # hacky pex setup
 /fawkes-runner.pex
+/env/
+/profile.speedscope
+/profile.flamegraph
