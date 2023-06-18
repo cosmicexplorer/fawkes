@@ -39,31 +39,7 @@ from keras.preprocessing import image
 
 from fawkes.align_face import align
 from six.moves.urllib.request import urlopen
-
-if sys.version_info[0] == 2:
-    def urlretrieve(url, filename, reporthook=None, data=None):
-        def chunk_read(response, chunk_size=8192, reporthook=None):
-            content_type = response.info().get('Content-Length')
-            total_size = -1
-            if content_type is not None:
-                total_size = int(content_type.strip())
-            count = 0
-            while True:
-                chunk = response.read(chunk_size)
-                count += 1
-                if reporthook is not None:
-                    reporthook(count, chunk_size, total_size)
-                if chunk:
-                    yield chunk
-                else:
-                    break
-
-        response = urlopen(url, data)
-        with open(filename, 'wb') as fd:
-            for chunk in chunk_read(response, reporthook=reporthook):
-                fd.write(chunk)
-else:
-    from six.moves.urllib.request import urlretrieve
+from six.moves.urllib.request import urlretrieve
 
 
 def clip_img(X, preprocessing='raw'):
@@ -242,25 +218,6 @@ def get_ends(longsize, window):
     return start, end
 
 
-def dump_dictionary_as_json(dict, outfile):
-    j = json.dumps(dict)
-    with open(outfile, "wb") as f:
-        f.write(j.encode())
-
-
-def load_victim_model(number_classes, teacher_model=None, end2end=False):
-    for l in teacher_model.layers:
-        l.trainable = end2end
-    x = teacher_model.layers[-1].output
-
-    x = Dense(number_classes)(x)
-    x = Activation('softmax', name="act")(x)
-    model = Model(teacher_model.input, x)
-    opt = keras.optimizers.Adadelta()
-    model.compile(loss='categorical_crossentropy', optimizer=opt, metrics=['accuracy'])
-    return model
-
-
 def resize(img, sz):
     assert np.min(img) >= 0 and np.max(img) <= 255.0
     from keras.preprocessing import image
@@ -288,21 +245,6 @@ def init_gpu(gpu):
             print(len(gpus), "Physical GPUs,", len(logical_gpus), "Logical GPU")
         except RuntimeError as e:
             print(e)
-
-
-def fix_gpu_memory(mem_fraction=1):
-    os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
-    tf_config = None
-    if tf.test.is_gpu_available():
-        gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=mem_fraction)
-        tf_config = tf.ConfigProto(gpu_options=gpu_options)
-        tf_config.gpu_options.allow_growth = True
-        tf_config.log_device_placement = False
-    init_op = tf.global_variables_initializer()
-    sess = tf.Session(config=tf_config)
-    sess.run(init_op)
-    K.set_session(sess)
-    return sess
 
 
 def preprocess(X, method):
@@ -413,14 +355,6 @@ def imagenet_reverse_preprocessing(x, data_format=None):
 def reverse_process_cloaked(x, preprocess='imagenet'):
     # x = clip_img(x, preprocess)
     return reverse_preprocess(x, preprocess)
-
-
-def build_bottleneck_model(model, cut_off):
-    bottleneck_model = Model(model.input, model.get_layer(cut_off).output)
-    bottleneck_model.compile(loss='categorical_crossentropy',
-                             optimizer='adam',
-                             metrics=['accuracy'])
-    return bottleneck_model
 
 
 def load_extractor(name):
