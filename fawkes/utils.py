@@ -103,7 +103,7 @@ def filter_image_paths(image_paths):
 
 
 class Faces(object):
-    def __init__(self, image_paths, loaded_images, aligner, verbose=1, eval_local=False, preprocessing=True,
+    def __init__(self, image_paths, loaded_images, aligner, verbose=1, preprocessing=True,
                  no_align=False):
         self.image_paths = image_paths
         self.verbose = verbose
@@ -139,25 +139,21 @@ class Faces(object):
             cur_faces_square = []
             if verbose and not no_align:
                 print("Find {} face(s) in {}".format(len(cur_faces), p.split("/")[-1]))
-            if eval_local:
-                cur_faces = cur_faces[:1]
 
             for img in cur_faces:
-                if eval_local:
-                    base = resize(img, (IMG_SIZE, IMG_SIZE))
-                else:
-                    long_size = max([img.shape[1], img.shape[0]]) + self.margin
+                long_size = max([img.shape[1], img.shape[0]]) + self.margin
 
-                    base = np.ones((long_size, long_size, 3)) * np.mean(img, axis=(0, 1))
+                base = np.ones((long_size, long_size, 3)) * np.mean(img, axis=(0, 1))
 
-                    start1, end1 = get_ends(long_size, img.shape[0])
-                    start2, end2 = get_ends(long_size, img.shape[1])
+                start1, end1 = get_ends(long_size, img.shape[0])
+                start2, end2 = get_ends(long_size, img.shape[1])
 
-                    base[start1:end1, start2:end2, :] = img
-                    cur_start_end = (start1, end1, start2, end2)
-                    self.start_end_ls.append(cur_start_end)
+                base[start1:end1, start2:end2, :] = img
+                cur_start_end = (start1, end1, start2, end2)
+                self.start_end_ls.append(cur_start_end)
 
                 cur_faces_square.append(base)
+
             cur_faces_square = [resize(f, (IMG_SIZE, IMG_SIZE)) for f in cur_faces_square]
             self.cropped_faces.extend(cur_faces_square)
 
