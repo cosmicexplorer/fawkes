@@ -116,7 +116,6 @@ class Fawkes(object):
                                                   verbose=debug,
                                                   keep_final=False,
                                                   image_shape=(IMG_SIZE, IMG_SIZE, 3),
-                                                  loss_method='features',
                                                   tanh_process=True,
                                                   save_last_on_failed=save_last_on_failed,
                                                   )

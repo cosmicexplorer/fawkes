@@ -32,14 +32,13 @@ class FawkesMaskGeneration:
     IMAGE_SHAPE = (112, 112, 3)
     RATIO = 1.0
     LIMIT_DIST = False
-    LOSS_TYPE = 'features'  # use features (original Fawkes) or gradients (Witches Brew) to run Fawkes?
 
     def __init__(self, bottleneck_model_ls, mimic_img=MIMIC_IMG,
                  batch_size=1, learning_rate=LEARNING_RATE,
                  max_iterations=MAX_ITERATIONS, initial_const=INITIAL_CONST,
                  intensity_range=INTENSITY_RANGE, l_threshold=L_THRESHOLD,
                  max_val=MAX_VAL, keep_final=KEEP_FINAL, image_shape=IMAGE_SHAPE, verbose=1,
-                 ratio=RATIO, limit_dist=LIMIT_DIST, loss_method=LOSS_TYPE, tanh_process=True,
+                 ratio=RATIO, limit_dist=LIMIT_DIST, tanh_process=True,
                  save_last_on_failed=True):
 
         assert intensity_range in {'raw', 'imagenet', 'inception', 'mnist'}
@@ -64,7 +63,6 @@ class FawkesMaskGeneration:
         self.limit_dist = limit_dist
         self.single_shape = list(image_shape)
         self.bottleneck_models = bottleneck_model_ls
-        self.loss_method = loss_method
         self.tanh_process = tanh_process
 
     @staticmethod
