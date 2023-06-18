@@ -452,34 +452,10 @@ class Extractor(object):
         return self.predict(x)
 
 
-def get_dataset_path(dataset):
-    model_dir = os.path.join(os.path.expanduser('~'), '.fawkes')
-    if not os.path.exists(os.path.join(model_dir, "config.json")):
-        raise Exception("Please config the datasets before running protection code. See more in README and config.py.")
-
-    config = json.load(open(os.path.join(model_dir, "config.json"), 'r'))
-    if dataset not in config:
-        raise Exception(
-            "Dataset {} does not exist, please download to data/ and add the path to this function... Abort".format(
-                dataset))
-    return config[dataset]['train_dir'], config[dataset]['test_dir'], config[dataset]['num_classes'], config[dataset][
-        'num_images']
-
-
 def dump_image(x, filename, format="png", scale=False):
     img = image.array_to_img(x, scale=scale)
     img.save(filename, format)
     return
-
-
-def load_embeddings(feature_extractors_names):
-    model_dir = os.path.join(os.path.expanduser('~'), '.fawkes')
-    for extractor_name in feature_extractors_names:
-        fp = gzip.open(os.path.join(model_dir, "{}_emb.p.gz".format(extractor_name)), 'rb')
-        path2emb = pickle.load(fp)
-        fp.close()
-
-    return path2emb
 
 
 def extractor_ls_predict(feature_extractors_ls, X):
@@ -489,75 +465,6 @@ def extractor_ls_predict(feature_extractors_ls, X):
         feature_ls.append(cur_features)
     concated_feature_ls = np.concatenate(feature_ls, axis=1)
     return concated_feature_ls
-
-
-def pairwise_l2_distance(A, B):
-    BT = B.transpose()
-    vecProd = np.dot(A, BT)
-    SqA = A ** 2
-    sumSqA = np.matrix(np.sum(SqA, axis=1))
-    sumSqAEx = np.tile(sumSqA.transpose(), (1, vecProd.shape[1]))
-
-    SqB = B ** 2
-    sumSqB = np.sum(SqB, axis=1)
-    sumSqBEx = np.tile(sumSqB, (vecProd.shape[0], 1))
-    SqED = sumSqBEx + sumSqAEx - 2 * vecProd
-    SqED[SqED < 0] = 0.0
-    ED = np.sqrt(SqED)
-    return ED
-
-
-def select_target_label(imgs, feature_extractors_ls, feature_extractors_names, metric='l2'):
-    model_dir = os.path.join(os.path.expanduser('~'), '.fawkes')
-
-    original_feature_x = extractor_ls_predict(feature_extractors_ls, imgs)
-
-    path2emb = load_embeddings(feature_extractors_names)
-
-    items = list([(k, v) for k, v in path2emb.items()])
-    paths = [p[0] for p in items]
-    embs = [p[1] for p in items]
-    embs = np.array(embs)
-
-    pair_dist = pairwise_l2_distance(original_feature_x, embs)
-    pair_dist = np.array(pair_dist)
-
-    max_sum = np.min(pair_dist, axis=0)
-    max_id_ls = np.argsort(max_sum)[::-1]
-
-    max_id = random.choice(max_id_ls[:20])
-
-    target_data_id = paths[int(max_id)]
-    print("target ID: {}".format(target_data_id))
-
-    image_dir = os.path.join(model_dir, "target_data/{}".format(target_data_id))
-
-    os.makedirs(os.path.join(model_dir, "target_data"), exist_ok=True)
-    os.makedirs(image_dir, exist_ok=True)
-    for i in range(10):
-        if os.path.exists(os.path.join(model_dir, "target_data/{}/{}.jpg".format(target_data_id, i))):
-            continue
-        try:
-            get_file("{}.jpg".format(i),
-                     "http://mirror.cs.uchicago.edu/fawkes/files/target_data/{}/{}.jpg".format(target_data_id, i),
-                     cache_dir=model_dir, cache_subdir='target_data/{}/'.format(target_data_id))
-        except Exception:
-            pass
-
-    image_paths = glob.glob(image_dir + "/*.jpg")
-
-    target_images = [image.img_to_array(image.load_img(cur_path)) for cur_path in
-                     image_paths]
-
-    target_images = np.array([resize(x, (IMG_SIZE, IMG_SIZE)) for x in target_images])
-    target_images = preprocess(target_images, PREPROCESS)
-
-    target_images = list(target_images)
-    while len(target_images) < len(imgs):
-        target_images += target_images
-
-    target_images = random.sample(target_images, len(imgs))
-    return np.array(target_images)
 
 
 def l2_norm(x, axis=1):
