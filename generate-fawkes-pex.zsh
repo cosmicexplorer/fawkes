@@ -11,10 +11,12 @@ readonly output_file="${OUTPUT_FILE:-./fawkes.pex}"
 # module containing __main__ (which in this case is named "fawkes")!
 rm -fv "$output_file"
 
-"$pex_cmd" \
-  -vvvvvvvvv \
-  --resolver-version=pip-2020-resolver \
-  --python=python3.8 \
-  'numpy>=1.19.5' 'tensorflow-gpu==2.5.3' 'keras==2.4.3' 'mtcnn' 'pillow>=7.0.0' 'bleach>=2.1.0' \
-  -D . -e fawkes:main --validate-entry-point \
-  -o fawkes.pex
+exec "$pex_cmd" \
+     -vvvvvvvvv \
+     --resolver-version=pip-2020-resolver \
+     --python=python3.8 \
+     'numpy>=1.19.5' 'tensorflow-gpu==2.5.3' 'keras==2.4.3' 'mtcnn' 'pillow>=7.0.0' \
+     'bleach>=2.1.0' \
+     -D . \
+     -e fawkes:main --validate-entry-point \
+     -o fawkes.pex
