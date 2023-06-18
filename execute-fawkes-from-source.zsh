@@ -3,8 +3,9 @@
 set -eux
 
 readonly protection_mode="${MODE:-low}"
-readonly pex_file="${OUTPUT_FILE:-./fawkes.pex}"
+readonly pex_file="${OUTPUT_FILE:-./fawkes-runner.pex}"
 
+PATH="/home/cosmicexplorer/tools/s2/opt/spack/linux-ubuntu22.10-zen3/gcc-12.2.0/python-3.8.16-aa6figfsbchmev4h5xiwa7tcqgzlbs5h/bin:${PATH}"
 export LD_LIBRARY_PATH='/home/cosmicexplorer/tools/s2/opt/spack/linux-ubuntu22.10-zen3/gcc-12.2.0/cuda-11.2.2-4zo5zrp65dhdizjexsdf4nadnywnuh4h/targets/x86_64-linux/lib:/home/cosmicexplorer/tools/s2/opt/spack/linux-ubuntu22.10-zen3/gcc-12.2.0/cudnn-8.7.0.84-11.8-eeziikgbkjtctzsfj7xnlz5cwymfjp6k/lib:/home/cosmicexplorer/tools/s2/opt/spack/linux-ubuntu22.10-zen3/gcc-12.2.0/cuda-11.0.3-goviprkcgyeyukopcizps2fpa264dwko/targets/x86_64-linux/lib'
 
 # NB: this was necessary at one point, but the error messages are no longer showing up!

@@ -20,4 +20,4 @@ fawkes_dev/protect_personId.txt
 .vscode
 
 # hacky pex setup
-/fawkes.pex
+/fawkes-runner.pex
